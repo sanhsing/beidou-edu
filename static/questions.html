@@ -26,8 +26,9 @@
         .btn:hover { background: #00ff8822; }
         
         .stats-box { background: #1a1a2e; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; gap: 2rem; }
+        .stats-box div { text-align: center; }
         .stats-box .num { font-size: 1.5rem; color: #00ff88; }
-        .stats-box .label { color: #666; font-size: 0.75rem; }
+        .stats-box .label { font-size: 0.75rem; color: #666; }
         
         .question { background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%); border: 1px solid #00ff8833; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }
         .q-header { display: flex; justify-content: space-between; margin-bottom: 0.8rem; }
@@ -107,25 +108,77 @@
                         <span class="q-diff ${q.difficulty||'medium'}">${diffMap[q.difficulty]||'中等'}</span>
                     </div>
                     <div class="q-content">${q.content||q.title||'題目'}</div>
-                    ${opts.length ? `<div class="q-options">${opts.map((o,j) => `<div class="option" onclick="check(${i},${j})">${String.fromCharCode(65+j)}. ${o}</div>`).join('')}</div>` : ''}
+                    ${opts.length ? `<div class="q-options">${opts.map((o,j) => `<div class="option" data-idx="${j}" data-text="${o}" onclick="check(${i},${j})">${String.fromCharCode(65+j)}. ${o}</div>`).join('')}</div>` : ''}
                     <div class="q-answer">答案: <span class="answer-text" onclick="show(${i})">點擊顯示</span></div>
                 </div>
                 `;
             }).join('');
         }
         
-        function check(qi, oi) {
+        function getCorrectIndex(q) {
+            // 取得正確答案的索引
+            const answer = String(q.answer || '').trim();
+            let opts = [];
+            try { opts = q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : []; } catch(e) {}
+            
+            // 如果答案是 A/B/C/D 字母
+            if (/^[A-Da-d]$/.test(answer)) {
+                return answer.toUpperCase().charCodeAt(0) - 65;
+            }
+            
+            // 如果答案是數字 0/1/2/3
+            if (/^[0-3]$/.test(answer)) {
+                return parseInt(answer);
+            }
+            
+            // 如果答案是完整文字，找匹配的選項
+            for (let i = 0; i < opts.length; i++) {
+                if (opts[i] === answer || opts[i].includes(answer) || answer.includes(opts[i])) {
+                    return i;
+                }
+            }
+            
+            // 預設第一個（找不到時）
+            return 0;
+        }
+        
+        function getCorrectLetter(q) {
+            const idx = getCorrectIndex(q);
+            return String.fromCharCode(65 + idx);
+        }
+        
+        function check(qi, selectedIdx) {
             const q = questions[qi];
-            const correct = String(q.answer);
+            const correctIdx = getCorrectIndex(q);
             const opts = document.querySelectorAll(`#q${qi} .option`);
+            
             opts.forEach((o, j) => {
-                if (String.fromCharCode(65+j) === correct) o.classList.add('correct');
-                else if (j === oi) o.classList.add('wrong');
+                o.classList.remove('correct', 'wrong');
+                if (j === correctIdx) {
+                    o.classList.add('correct');
+                } else if (j === selectedIdx && j !== correctIdx) {
+                    o.classList.add('wrong');
+                }
             });
+            
+            // 更新答案顯示
+            document.querySelector(`#q${qi} .answer-text`).textContent = getCorrectLetter(q);
         }
         
         function show(qi) {
-            document.querySelector(`#q${qi} .answer-text`).textContent = questions[qi].answer || '?';
+            const q = questions[qi];
+            const correctIdx = getCorrectIndex(q);
+            const correctLetter = getCorrectLetter(q);
+            
+            document.querySelector(`#q${qi} .answer-text`).textContent = correctLetter;
+            
+            // 也標示正確選項
+            const opts = document.querySelectorAll(`#q${qi} .option`);
+            opts.forEach((o, j) => {
+                if (j === correctIdx) {
+                    o.classList.add('correct');
+                }
+            });
         }
         
         loadStats(); load();
