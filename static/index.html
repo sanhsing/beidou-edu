@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>北斗教育系統 | XTF-DAO</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: #0a0a0f; color: #00ff88; display: flex; min-height: 100vh; }
+        
+        /* 側邊欄 */
+        .sidebar { width: 220px; background: #0f0f1a; border-right: 1px solid #00ff8833; display: flex; flex-direction: column; position: fixed; height: 100vh; }
+        .sidebar-logo { padding: 1.5rem 1rem; border-bottom: 1px solid #00ff8833; font-size: 1.1rem; }
+        .sidebar-logo span { color: #00ff88; }
+        .sidebar-nav { flex: 1; padding: 1rem 0; }
+        .nav-item { display: flex; align-items: center; padding: 0.8rem 1.2rem; color: #888; text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: #00ff8811; color: #00ff88; border-left-color: #00ff88; }
+        .nav-item i { margin-right: 0.8rem; font-size: 1.1rem; }
+        .sidebar-user { padding: 1rem; border-top: 1px solid #00ff8833; }
+        .user-info { display: flex; align-items: center; gap: 0.8rem; }
+        .user-avatar { width: 36px; height: 36px; background: #00ff8833; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .user-name { color: #fff; font-size: 0.9rem; }
+        .user-role { color: #666; font-size: 0.75rem; }
+        .login-btn { width: 100%; padding: 0.6rem; background: #00ff8822; border: 1px solid #00ff88; color: #00ff88; border-radius: 4px; cursor: pointer; font-family: inherit; }
+        .login-btn:hover { background: #00ff88; color: #000; }
+        
+        /* 主內容 */
+        .main { flex: 1; margin-left: 220px; }
+        .header { padding: 1rem 2rem; border-bottom: 1px solid #00ff8833; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 1.3rem; color: #fff; }
+        .header-status { color: #00ff88; font-size: 0.85rem; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; background: #00ff88; border-radius: 50%; margin-right: 6px; animation: blink 1s infinite; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .content { padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; }
+        .hero h1 { font-size: 2.5rem; color: #fff; margin-bottom: 0.5rem; }
+        .hero h1 span { color: #00ff88; }
+        .hero p { color: #666; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 2rem 0; }
+        .stat-card { background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%); border: 1px solid #00ff8833; border-radius: 8px; padding: 1.5rem; text-align: center; transition: all 0.3s; }
+        .stat-card:hover { border-color: #00ff88; transform: translateY(-2px); }
+        .stat-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .stat-value { font-size: 2rem; color: #00ff88; font-weight: bold; }
+        .stat-label { color: #666; font-size: 0.8rem; margin-top: 0.3rem; }
+        
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem; }
+        .feature { background: #1a1a2e; border: 1px solid #00ff8822; border-radius: 8px; padding: 1.5rem; text-align: center; }
+        .feature:hover { border-color: #00ff88; }
+        .feature h3 { color: #fff; margin: 0.5rem 0; }
+        .feature p { color: #666; font-size: 0.85rem; margin-bottom: 1rem; }
+        .feature a { color: #00ff88; text-decoration: none; border: 1px solid #00ff88; padding: 0.4rem 1rem; border-radius: 4px; font-size: 0.85rem; }
+        .feature a:hover { background: #00ff88; color: #000; }
+        
+        /* 登入彈窗 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-box { background: #1a1a2e; border: 1px solid #00ff8855; border-radius: 12px; padding: 2rem; width: 90%; max-width: 400px; }
+        .modal-title { color: #fff; margin-bottom: 1.5rem; text-align: center; }
+        .modal-tabs { display: flex; margin-bottom: 1.5rem; }
+        .modal-tab { flex: 1; padding: 0.6rem; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; color: #666; }
+        .modal-tab.active { color: #00ff88; border-color: #00ff88; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; color: #888; margin-bottom: 0.3rem; font-size: 0.85rem; }
+        .form-group input { width: 100%; background: #0a0a0f; border: 1px solid #333; color: #fff; padding: 0.7rem; border-radius: 4px; }
+        .form-group input:focus { border-color: #00ff88; outline: none; }
+        .modal-btn { width: 100%; padding: 0.8rem; background: #00ff88; border: none; color: #000; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold; margin-top: 0.5rem; }
+        .modal-btn:hover { background: #00cc66; }
+        .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: #666; font-size: 1.5rem; cursor: pointer; }
+        .msg { padding: 0.6rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem; text-align: center; }
+        .msg.error { background: #ff444422; color: #ff6666; }
+        .msg.success { background: #00ff8822; color: #00ff88; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <!-- 側邊欄 -->
+    <div class="sidebar">
+        <div class="sidebar-logo">[<span>XTF-DAO</span>]</div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item active"><i>🏠</i> 首頁</a>
+            <a href="/concepts" class="nav-item"><i>📚</i> 概念瀏覽</a>
+            <a href="/questions" class="nav-item"><i>📝</i> 題目練習</a>
+            <a href="/mindmap" class="nav-item"><i>🧠</i> 心智圖</a>
+            <a href="/dashboard" class="nav-item"><i>📊</i> 儀表板</a>
+        </nav>
+        <div class="sidebar-user">
+            <div id="guestArea">
+                <button class="login-btn" onclick="showModal()">🔐 登入 / 註冊</button>
+            </div>
+            <div id="userArea" class="hidden">
+                <div class="user-info">
+                    <div class="user-avatar">👤</div>
+                    <div>
+                        <div class="user-name" id="displayName">--</div>
+                        <div class="user-role" id="displayRole">--</div>
+                    </div>
+                </div>
+                <button class="login-btn" onclick="logout()" style="margin-top:0.8rem;background:transparent;">登出</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主內容 -->
+    <div class="main">
+        <div class="header">
+            <div class="header-title">北斗教育系統</div>
+            <div class="header-status"><span class="status-dot"></span>ONLINE</div>
+        </div>
+        <div class="content">
+            <div class="hero">
+                <h1>🎓 <span>北斗</span>教育</h1>
+                <p>台灣 K-12 知識圖譜平台 | Powered by XTF-DAO</p>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-value" id="s-concepts">--</div><div class="stat-label">知識概念</div></div>
+                <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="s-questions">--</div><div class="stat-label">練習題目</div></div>
+                <div class="stat-card"><div class="stat-icon">🔗</div><div class="stat-value" id="s-links">--</div><div class="stat-label">知識關聯</div></div>
+                <div class="stat-card"><div class="stat-icon">📖</div><div class="stat-value" id="s-subjects">--</div><div class="stat-label">學科領域</div></div>
+            </div>
+            
+            <div class="features">
+                <div class="feature"><div>📚</div><h3>概念瀏覽</h3><p>探索知識圖譜</p><a href="/concepts">進入 →</a></div>
+                <div class="feature"><div>📝</div><h3>題目練習</h3><p>依難度分級</p><a href="/questions">開始 →</a></div>
+                <div class="feature"><div>🧠</div><h3>心智圖</h3><p>視覺化知識</p><a href="/mindmap">查看 →</a></div>
+                <div class="feature"><div>📊</div><h3>學習儀表板</h3><p>追蹤進度</p><a href="/dashboard">進入 →</a></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 登入彈窗 -->
+    <div class="modal" id="authModal">
+        <div class="modal-box" style="position:relative;">
+            <button class="modal-close" onclick="hideModal()">×</button>
+            <div class="modal-title">用戶認證</div>
+            <div class="modal-tabs">
+                <div class="modal-tab active" onclick="switchTab('login')">登入</div>
+                <div class="modal-tab" onclick="switchTab('register')">註冊</div>
+            </div>
+            <div id="authMsg"></div>
+            
+            <div id="loginForm">
+                <div class="form-group"><label>用戶名</label><input type="text" id="loginUser" placeholder="輸入用戶名"></div>
+                <div class="form-group"><label>密碼</label><input type="password" id="loginPass" placeholder="輸入密碼"></div>
+                <button class="modal-btn" onclick="login()">登入</button>
+            </div>
+            
+            <div id="registerForm" class="hidden">
+                <div class="form-group"><label>用戶名</label><input type="text" id="regUser" placeholder="輸入用戶名"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="輸入 Email"></div>
+                <div class="form-group"><label>密碼 (至少6位)</label><input type="password" id="regPass" placeholder="輸入密碼"></div>
+                <button class="modal-btn" onclick="register()">註冊</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user') || 'null');
+        
+        // 初始化
+        async function init() {
+            await loadStats();
+            if (token && user) showLoggedIn();
+        }
+        
+        async function loadStats() {
+            try {
+                const r = await fetch('/api/system/stats');
+                const d = await r.json();
+                document.getElementById('s-concepts').textContent = d.concepts;
+                document.getElementById('s-questions').textContent = d.questions?.toLocaleString() || d.questions;
+                document.getElementById('s-links').textContent = d.links;
+                document.getElementById('s-subjects').textContent = d.subjects;
+            } catch(e) {}
+        }
+        
+        // 彈窗
+        function showModal() { document.getElementById('authModal').classList.add('show'); }
+        function hideModal() { document.getElementById('authModal').classList.remove('show'); document.getElementById('authMsg').innerHTML = ''; }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+        }
+        
+        function showMsg(msg, type) {
+            document.getElementById('authMsg').innerHTML = `<div class="msg ${type}">${msg}</div>`;
+        }
+        
+        // 登入
+        async function login() {
+            const username = document.getElementById('loginUser').value;
+            const password = document.getElementById('loginPass').value;
+            if (!username || !password) { showMsg('請填寫所有欄位', 'error'); return; }
+            
+            try {
+                const r = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                const d = await r.json();
+                if (r.ok) {
+                    token = d.token;
+                    user = d.user;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    hideModal();
+                    showLoggedIn();
+                } else {
+                    showMsg(d.error || '登入失敗', 'error');
+                }
+            } catch(e) { showMsg('網路錯誤', 'error'); }
+        }
+        
+        // 註冊
+        async function register() {
+            const username = document.getElementById('regUser').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPass').value;
+            if (!username || !email || !password) { showMsg('請填寫所有欄位', 'error'); return; }
+            
+            try {
+                const r = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, email, password})
+                });
+                const d = await r.json();
+                if (r.ok) {
+                    showMsg('註冊成功！請登入', 'success');
+                    switchTab('login');
+                } else {
+                    showMsg(d.error || '註冊失敗', 'error');
+                }
+            } catch(e) { showMsg('網路錯誤', 'error'); }
+        }
+        
+        function showLoggedIn() {
+            document.getElementById('guestArea').classList.add('hidden');
+            document.getElementById('userArea').classList.remove('hidden');
+            document.getElementById('displayName').textContent = user.display_name || user.username;
+            document.getElementById('displayRole').textContent = user.role || 'student';
+        }
+        
+        function logout() {
+            token = null;
+            user = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.getElementById('guestArea').classList.remove('hidden');
+            document.getElementById('userArea').classList.add('hidden');
+        }
+        
+        init();
+    </script>
+</body>
+</html>

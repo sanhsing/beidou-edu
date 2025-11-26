@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>儀表板 | XTF-DAO 北斗教育</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: #0a0a0f; color: #00ff88; display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 220px; background: #0f0f1a; border-right: 1px solid #00ff8833; display: flex; flex-direction: column; position: fixed; height: 100vh; }
+        .sidebar-logo { padding: 1.5rem 1rem; border-bottom: 1px solid #00ff8833; font-size: 1.1rem; }
+        .sidebar-logo span { color: #00ff88; }
+        .sidebar-nav { flex: 1; padding: 1rem 0; }
+        .nav-item { display: flex; align-items: center; padding: 0.8rem 1.2rem; color: #888; text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: #00ff8811; color: #00ff88; border-left-color: #00ff88; }
+        .nav-item i { margin-right: 0.8rem; }
+        
+        .main { flex: 1; margin-left: 220px; }
+        .header { padding: 1rem 2rem; border-bottom: 1px solid #00ff8833; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 1.3rem; color: #fff; }
+        .status { color: #00ff88; font-size: 0.85rem; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; background: #00ff88; border-radius: 50%; margin-right: 6px; animation: blink 1s infinite; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .content { padding: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%); border: 1px solid #00ff8833; border-radius: 8px; padding: 1.2rem; text-align: center; }
+        .stat-card .icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .stat-card .value { font-size: 1.8rem; color: #00ff88; font-weight: bold; }
+        .stat-card .label { color: #666; font-size: 0.75rem; }
+        
+        .section { background: #1a1a2e; border: 1px solid #00ff8822; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .section-title { color: #00ff88; margin-bottom: 1rem; font-size: 1rem; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; color: #888; margin-bottom: 0.3rem; font-size: 0.85rem; }
+        .form-group input, .form-group select { width: 100%; background: #0a0a0f; border: 1px solid #333; color: #fff; padding: 0.6rem; border-radius: 4px; }
+        .form-group input:focus { border-color: #00ff88; outline: none; }
+        .btn { background: #00ff8822; color: #00ff88; border: 1px solid #00ff88; padding: 0.6rem 1.5rem; border-radius: 4px; cursor: pointer; font-family: inherit; }
+        .btn:hover { background: #00ff88; color: #000; }
+        .btn-secondary { background: transparent; border-color: #666; color: #888; }
+        
+        .msg { padding: 0.6rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem; text-align: center; }
+        .msg.error { background: #ff444422; color: #ff6666; }
+        .msg.success { background: #00ff8822; color: #00ff88; }
+        
+        .tabs { display: flex; margin-bottom: 1rem; }
+        .tab { padding: 0.5rem 1rem; cursor: pointer; border-bottom: 2px solid transparent; color: #888; }
+        .tab.active { border-color: #00ff88; color: #00ff88; }
+        
+        .user-info { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+        .user-avatar { width: 50px; height: 50px; background: #00ff8833; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        .user-name { color: #fff; font-size: 1.2rem; }
+        .user-role { color: #666; font-size: 0.8rem; }
+        
+        .quiz-q { background: #0a0a0f; border: 1px solid #333; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+        .quiz-q .q-num { color: #00ff88; font-size: 0.8rem; margin-bottom: 0.5rem; }
+        .quiz-q .q-text { color: #fff; margin-bottom: 0.8rem; }
+        .quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .quiz-opt { background: #1a1a2e; border: 1px solid #333; padding: 0.5rem; border-radius: 4px; cursor: pointer; color: #ccc; font-size: 0.85rem; }
+        .quiz-opt:hover { border-color: #00ff88; }
+        .quiz-opt.selected { border-color: #00ff88; background: #00ff8822; }
+        
+        .quiz-result { text-align: center; padding: 2rem; }
+        .quiz-result .score { font-size: 3rem; color: #00ff88; }
+        
+        .progress-list { max-height: 250px; overflow-y: auto; }
+        .progress-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid #333; }
+        .progress-bar { width: 80px; height: 6px; background: #333; border-radius: 3px; }
+        .progress-fill { height: 100%; background: #00ff88; border-radius: 3px; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">[<span>XTF-DAO</span>]</div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item"><i>🏠</i> 首頁</a>
+            <a href="/concepts" class="nav-item"><i>📚</i> 概念瀏覽</a>
+            <a href="/questions" class="nav-item"><i>📝</i> 題目練習</a>
+            <a href="/mindmap" class="nav-item"><i>🧠</i> 心智圖</a>
+            <a href="/dashboard" class="nav-item active"><i>📊</i> 儀表板</a>
+        </nav>
+    </div>
+    
+    <div class="main">
+        <div class="header">
+            <div class="header-title">📊 學習儀表板</div>
+            <div class="status"><span class="status-dot"></span>ONLINE</div>
+        </div>
+        <div class="content">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="icon">📚</div><div class="value" id="s-concepts">--</div><div class="label">概念</div></div>
+                <div class="stat-card"><div class="icon">📝</div><div class="value" id="s-questions">--</div><div class="label">題目</div></div>
+                <div class="stat-card"><div class="icon">🔗</div><div class="value" id="s-links">--</div><div class="label">關聯</div></div>
+                <div class="stat-card"><div class="icon">👥</div><div class="value" id="s-users">--</div><div class="label">用戶</div></div>
+            </div>
+            
+            <div class="grid-2">
+                <div>
+                    <!-- 登入區 -->
+                    <div class="section" id="authSection">
+                        <div class="section-title">🔐 用戶認證</div>
+                        <div class="tabs">
+                            <div class="tab active" onclick="switchTab('login')">登入</div>
+                            <div class="tab" onclick="switchTab('register')">註冊</div>
+                        </div>
+                        <div id="authMsg"></div>
+                        <div id="loginForm">
+                            <div class="form-group"><label>用戶名</label><input type="text" id="loginUser"></div>
+                            <div class="form-group"><label>密碼</label><input type="password" id="loginPass"></div>
+                            <button class="btn" onclick="login()">登入</button>
+                        </div>
+                        <div id="registerForm" class="hidden">
+                            <div class="form-group"><label>用戶名</label><input type="text" id="regUser"></div>
+                            <div class="form-group"><label>Email</label><input type="email" id="regEmail"></div>
+                            <div class="form-group"><label>密碼</label><input type="password" id="regPass"></div>
+                            <button class="btn" onclick="register()">註冊</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 用戶資訊 -->
+                    <div class="section hidden" id="userSection">
+                        <div class="user-info">
+                            <div class="user-avatar">👤</div>
+                            <div><div class="user-name" id="userName">--</div><div class="user-role" id="userRole">--</div></div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="logout()">登出</button>
+                    </div>
+                    
+                    <!-- 進度 -->
+                    <div class="section hidden" id="progressSection">
+                        <div class="section-title">📈 學習進度</div>
+                        <div class="progress-list" id="progressList"><div style="color:#666;text-align:center;">尚無記錄</div></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <!-- 測驗 -->
+                    <div class="section" id="quizSection">
+                        <div class="section-title">🎯 快速測驗</div>
+                        <div id="quizContent">
+                            <p style="color:#888;margin-bottom:1rem;">測試你的知識！</p>
+                            <div class="form-group">
+                                <label>題數</label>
+                                <select id="quizCount"><option value="5">5 題</option><option value="10">10 題</option></select>
+                            </div>
+                            <button class="btn" onclick="startQuiz()">開始測驗</button>
+                        </div>
+                        <div id="quizActive" class="hidden">
+                            <div id="quizQuestions"></div>
+                            <button class="btn" onclick="submitQuiz()">提交答案</button>
+                        </div>
+                        <div id="quizResult" class="hidden">
+                            <div class="quiz-result">
+                                <div style="color:#888;">得分</div>
+                                <div class="score" id="quizScore">--</div>
+                                <div style="color:#666;" id="quizDetail">0/0</div>
+                            </div>
+                            <button class="btn" onclick="resetQuiz()" style="margin-top:1rem;width:100%;">再測一次</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user') || 'null');
+        let quizData = { questions: [], answers: {}, sessionId: '' };
+        
+        async function init() {
+            await loadStats();
+            if (token && user) { showLoggedIn(); loadProgress(); }
+        }
+        
+        async function loadStats() {
+            try {
+                const r = await fetch('/api/system/stats');
+                const d = await r.json();
+                document.getElementById('s-concepts').textContent = d.concepts;
+                document.getElementById('s-questions').textContent = d.questions;
+                document.getElementById('s-links').textContent = d.links;
+                document.getElementById('s-users').textContent = d.users;
+            } catch(e) {}
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+        }
+        
+        function showMsg(msg, type) {
+            document.getElementById('authMsg').innerHTML = `<div class="msg ${type}">${msg}</div>`;
+        }
+        
+        async function login() {
+            const username = document.getElementById('loginUser').value;
+            const password = document.getElementById('loginPass').value;
+            if (!username || !password) { showMsg('請填寫所有欄位', 'error'); return; }
+            try {
+                const r = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password}) });
+                const d = await r.json();
+                if (r.ok) {
+                    token = d.token; user = d.user;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    showLoggedIn(); loadProgress();
+                } else { showMsg(d.error, 'error'); }
+            } catch(e) { showMsg('網路錯誤', 'error'); }
+        }
+        
+        async function register() {
+            const username = document.getElementById('regUser').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPass').value;
+            if (!username || !email || !password) { showMsg('請填寫所有欄位', 'error'); return; }
+            try {
+                const r = await fetch('/api/auth/register', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, email, password}) });
+                const d = await r.json();
+                if (r.ok) { showMsg('註冊成功', 'success'); switchTab('login'); }
+                else { showMsg(d.error, 'error'); }
+            } catch(e) { showMsg('網路錯誤', 'error'); }
+        }
+        
+        function showLoggedIn() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('userSection').classList.remove('hidden');
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('userName').textContent = user.display_name || user.username;
+            document.getElementById('userRole').textContent = user.role;
+        }
+        
+        function logout() {
+            token = null; user = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('userSection').classList.add('hidden');
+            document.getElementById('progressSection').classList.add('hidden');
+        }
+        
+        async function loadProgress() {
+            if (!token) return;
+            try {
+                const r = await fetch('/api/progress', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (r.ok) {
+                    const data = await r.json();
+                    const list = document.getElementById('progressList');
+                    if (!data.length) { list.innerHTML = '<div style="color:#666;text-align:center;">尚無記錄</div>'; return; }
+                    list.innerHTML = data.slice(0,10).map(p => `
+                        <div class="progress-item">
+                            <div style="color:#fff;font-size:0.85rem;">${p.title||'概念'}</div>
+                            <div class="progress-bar"><div class="progress-fill" style="width:${(p.mastery_level||0)*100}%"></div></div>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) {}
+        }
+        
+        async function startQuiz() {
+            const count = document.getElementById('quizCount').value;
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            try {
+                const r = await fetch('/api/quiz/generate', { method: 'POST', headers, body: JSON.stringify({ count: parseInt(count) }) });
+                if (r.ok) {
+                    const d = await r.json();
+                    quizData = { questions: d.questions, answers: {}, sessionId: d.session_id };
+                    renderQuiz();
+                } else { alert('請先登入'); }
+            } catch(e) { alert('錯誤'); }
+        }
+        
+        function renderQuiz() {
+            document.getElementById('quizContent').classList.add('hidden');
+            document.getElementById('quizActive').classList.remove('hidden');
+            document.getElementById('quizResult').classList.add('hidden');
+            document.getElementById('quizQuestions').innerHTML = quizData.questions.map((q, i) => {
+                let opts = [];
+                try { opts = q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : []; } catch(e) {}
+                return `
+                <div class="quiz-q" id="qq${i}">
+                    <div class="q-num">第 ${i+1} 題</div>
+                    <div class="q-text">${q.content || '題目'}</div>
+                    ${opts.length ? `<div class="quiz-opts">${opts.map((o, j) => `<div class="quiz-opt" onclick="selectAns(${i},'${String.fromCharCode(65+j)}')">${String.fromCharCode(65+j)}. ${o}</div>`).join('')}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+        
+        function selectAns(qi, ans) {
+            quizData.answers[qi] = ans;
+            document.querySelectorAll(`#qq${qi} .quiz-opt`).forEach(o => o.classList.remove('selected'));
+            event.target.classList.add('selected');
+        }
+        
+        async function submitQuiz() {
+            const answers = quizData.questions.map((q, i) => ({ question_id: q.id, answer: quizData.answers[i] || '' }));
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            try {
+                const r = await fetch('/api/quiz/submit', { method: 'POST', headers, body: JSON.stringify({ session_id: quizData.sessionId, answers }) });
+                if (r.ok) {
+                    const d = await r.json();
+                    document.getElementById('quizActive').classList.add('hidden');
+                    document.getElementById('quizResult').classList.remove('hidden');
+                    document.getElementById('quizScore').textContent = d.score + '%';
+                    document.getElementById('quizDetail').textContent = `${d.correct}/${d.total} 正確`;
+                }
+            } catch(e) { alert('錯誤'); }
+        }
+        
+        function resetQuiz() {
+            quizData = { questions: [], answers: {}, sessionId: '' };
+            document.getElementById('quizContent').classList.remove('hidden');
+            document.getElementById('quizActive').classList.add('hidden');
+            document.getElementById('quizResult').classList.add('hidden');
+        }
+        
+        init();
+    </script>
+</body>
+</html>

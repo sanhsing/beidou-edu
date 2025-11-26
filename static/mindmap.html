@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心智圖 | XTF-DAO 北斗教育</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: #0a0a0f; color: #00ff88; display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 220px; background: #0f0f1a; border-right: 1px solid #00ff8833; display: flex; flex-direction: column; position: fixed; height: 100vh; }
+        .sidebar-logo { padding: 1.5rem 1rem; border-bottom: 1px solid #00ff8833; font-size: 1.1rem; }
+        .sidebar-logo span { color: #00ff88; }
+        .sidebar-nav { flex: 1; padding: 1rem 0; }
+        .nav-item { display: flex; align-items: center; padding: 0.8rem 1.2rem; color: #888; text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: #00ff8811; color: #00ff88; border-left-color: #00ff88; }
+        .nav-item i { margin-right: 0.8rem; }
+        
+        .main { flex: 1; margin-left: 220px; display: flex; flex-direction: column; height: 100vh; }
+        .header { padding: 1rem 2rem; border-bottom: 1px solid #00ff8833; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 1.3rem; color: #fff; }
+        
+        .controls { padding: 1rem 2rem; background: #0f0f1a; border-bottom: 1px solid #00ff8833; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+        select { background: #1a1a2e; color: #00ff88; border: 1px solid #00ff8855; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        .btn { background: #00ff8822; color: #00ff88; border: 1px solid #00ff88; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-family: inherit; }
+        .btn:hover { background: #00ff88; color: #000; }
+        
+        .graph-container { flex: 1; position: relative; overflow: hidden; }
+        #graph { width: 100%; height: 100%; }
+        
+        .node { cursor: pointer; }
+        .node circle { stroke: #00ff88; stroke-width: 2px; transition: all 0.3s; }
+        .node:hover circle { stroke-width: 3px; filter: drop-shadow(0 0 8px #00ff88); }
+        .node text { fill: #fff; font-size: 10px; pointer-events: none; }
+        .link { stroke: #00ff8844; stroke-width: 1.5px; }
+        
+        .tooltip { position: absolute; background: #1a1a2e; border: 1px solid #00ff88; border-radius: 8px; padding: 1rem; pointer-events: none; opacity: 0; transition: opacity 0.3s; max-width: 300px; z-index: 100; }
+        .tooltip h4 { color: #00ff88; margin-bottom: 0.5rem; }
+        .tooltip p { color: #ccc; font-size: 0.85rem; line-height: 1.4; }
+        
+        .legend { position: absolute; bottom: 1rem; left: 1rem; background: #1a1a2e; border: 1px solid #00ff8833; border-radius: 8px; padding: 1rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem; color: #888; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .legend-dot.elem { background: #4facfe; }
+        .legend-dot.junior { background: #ffaa00; }
+        .legend-dot.senior { background: #ff6666; }
+        
+        .stats-bar { position: absolute; top: 1rem; right: 1rem; background: #1a1a2e; border: 1px solid #00ff8833; border-radius: 8px; padding: 0.8rem 1.2rem; display: flex; gap: 1.5rem; }
+        .stat { text-align: center; }
+        .stat-num { color: #00ff88; font-size: 1.2rem; font-weight: bold; }
+        .stat-label { color: #666; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">[<span>XTF-DAO</span>]</div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item"><i>🏠</i> 首頁</a>
+            <a href="/concepts" class="nav-item"><i>📚</i> 概念瀏覽</a>
+            <a href="/questions" class="nav-item"><i>📝</i> 題目練習</a>
+            <a href="/mindmap" class="nav-item active"><i>🧠</i> 心智圖</a>
+            <a href="/dashboard" class="nav-item"><i>📊</i> 儀表板</a>
+        </nav>
+    </div>
+    
+    <div class="main">
+        <div class="header">
+            <div class="header-title">🧠 知識心智圖</div>
+        </div>
+        
+        <div class="controls">
+            <select id="subjectSelect" onchange="loadMindmap()">
+                <option value="math">數學</option>
+                <option value="chinese">國文</option>
+                <option value="english">英文</option>
+                <option value="physics">物理</option>
+                <option value="chemistry">化學</option>
+                <option value="biology">生物</option>
+                <option value="history">歷史</option>
+                <option value="geography">地理</option>
+            </select>
+            <button class="btn" onclick="resetZoom()">🔄 重置視圖</button>
+            <button class="btn" onclick="togglePhysics()">⚡ 物理模擬</button>
+        </div>
+        
+        <div class="graph-container">
+            <svg id="graph"></svg>
+            <div class="tooltip" id="tooltip"></div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot elem"></div> 國小</div>
+                <div class="legend-item"><div class="legend-dot junior"></div> 國中</div>
+                <div class="legend-item"><div class="legend-dot senior"></div> 高中</div>
+            </div>
+            <div class="stats-bar">
+                <div class="stat"><div class="stat-num" id="nodeCount">0</div><div class="stat-label">節點</div></div>
+                <div class="stat"><div class="stat-num" id="linkCount">0</div><div class="stat-label">連結</div></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let simulation, svg, g, link, node;
+        let physicsEnabled = true;
+        let currentData = { nodes: [], links: [] };
+        
+        const levelColors = {
+            'elementary': '#4facfe',
+            'junior': '#ffaa00',
+            'senior': '#ff6666'
+        };
+        
+        function initGraph() {
+            const container = document.querySelector('.graph-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            svg = d3.select('#graph')
+                .attr('width', width)
+                .attr('height', height);
+            
+            svg.selectAll('*').remove();
+            
+            // 縮放
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+            
+            svg.call(zoom);
+            g = svg.append('g');
+            
+            // 箭頭
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-0 -5 10 10')
+                .attr('refX', 20)
+                .attr('refY', 0)
+                .attr('orient', 'auto')
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .append('path')
+                .attr('d', 'M 0,-5 L 10,0 L 0,5')
+                .attr('fill', '#00ff8866');
+            
+            simulation = d3.forceSimulation()
+                .force('link', d3.forceLink().id(d => d.id).distance(80))
+                .force('charge', d3.forceManyBody().strength(-200))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(30));
+        }
+        
+        async function loadMindmap() {
+            const subject = document.getElementById('subjectSelect').value;
+            
+            try {
+                const r = await fetch(`/api/mindmap/${subject}`);
+                const data = await r.json();
+                currentData = data;
+                renderGraph(data);
+            } catch(e) {
+                // 如果 API 不存在，使用概念 API
+                const r = await fetch(`/api/concepts?subject=${subject}`);
+                const concepts = await r.json();
+                currentData = {
+                    nodes: concepts.map(c => ({
+                        id: c.id,
+                        title: c.title,
+                        education_level: c.education_level,
+                        grade: c.grade
+                    })),
+                    links: []
+                };
+                renderGraph(currentData);
+            }
+        }
+        
+        function renderGraph(data) {
+            document.getElementById('nodeCount').textContent = data.nodes.length;
+            document.getElementById('linkCount').textContent = data.links.length;
+            
+            g.selectAll('.link').remove();
+            g.selectAll('.node').remove();
+            
+            // 連結
+            link = g.append('g')
+                .selectAll('line')
+                .data(data.links)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('marker-end', 'url(#arrowhead)');
+            
+            // 節點
+            node = g.append('g')
+                .selectAll('.node')
+                .data(data.nodes)
+                .enter().append('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended))
+                .on('mouseover', showTooltip)
+                .on('mouseout', hideTooltip);
+            
+            node.append('circle')
+                .attr('r', d => 8 + (d.grade || 1))
+                .attr('fill', d => levelColors[d.education_level] || '#00ff88');
+            
+            node.append('text')
+                .attr('dy', -12)
+                .attr('text-anchor', 'middle')
+                .text(d => (d.title || '').substring(0, 8));
+            
+            simulation.nodes(data.nodes).on('tick', ticked);
+            simulation.force('link').links(data.links);
+            simulation.alpha(1).restart();
+        }
+        
+        function ticked() {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            node.attr('transform', d => `translate(${d.x},${d.y})`);
+        }
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            if (physicsEnabled) {
+                d.fx = null;
+                d.fy = null;
+            }
+        }
+        
+        function showTooltip(event, d) {
+            const tooltip = document.getElementById('tooltip');
+            const levelMap = {elementary:'國小',junior:'國中',senior:'高中'};
+            tooltip.innerHTML = `
+                <h4>${d.title || '概念'}</h4>
+                <p>學制: ${levelMap[d.education_level] || d.education_level || '-'}</p>
+                <p>年級: ${d.grade || '-'}</p>
+            `;
+            tooltip.style.left = (event.pageX - 220 + 10) + 'px';
+            tooltip.style.top = (event.pageY - 60) + 'px';
+            tooltip.style.opacity = 1;
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').style.opacity = 0;
+        }
+        
+        function resetZoom() {
+            svg.transition().duration(500).call(
+                d3.zoom().transform,
+                d3.zoomIdentity
+            );
+        }
+        
+        function togglePhysics() {
+            physicsEnabled = !physicsEnabled;
+            if (physicsEnabled) {
+                simulation.alpha(0.3).restart();
+            } else {
+                simulation.stop();
+            }
+        }
+        
+        // 視窗調整
+        window.addEventListener('resize', () => {
+            const container = document.querySelector('.graph-container');
+            svg.attr('width', container.clientWidth).attr('height', container.clientHeight);
+            simulation.force('center', d3.forceCenter(container.clientWidth / 2, container.clientHeight / 2));
+            simulation.alpha(0.3).restart();
+        });
+        
+        initGraph();
+        loadMindmap();
+    </script>
+</body>
+</html>

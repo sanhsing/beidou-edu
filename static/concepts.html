@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>概念瀏覽 | XTF-DAO 北斗教育</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: #0a0a0f; color: #00ff88; display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 220px; background: #0f0f1a; border-right: 1px solid #00ff8833; display: flex; flex-direction: column; position: fixed; height: 100vh; }
+        .sidebar-logo { padding: 1.5rem 1rem; border-bottom: 1px solid #00ff8833; font-size: 1.1rem; }
+        .sidebar-logo span { color: #00ff88; }
+        .sidebar-nav { flex: 1; padding: 1rem 0; }
+        .nav-item { display: flex; align-items: center; padding: 0.8rem 1.2rem; color: #888; text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: #00ff8811; color: #00ff88; border-left-color: #00ff88; }
+        .nav-item i { margin-right: 0.8rem; }
+        
+        .main { flex: 1; margin-left: 220px; }
+        .header { padding: 1rem 2rem; border-bottom: 1px solid #00ff8833; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 1.3rem; color: #fff; }
+        
+        .content { padding: 2rem; }
+        .filters { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        select { background: #1a1a2e; color: #00ff88; border: 1px solid #00ff8855; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        
+        .stats-bar { display: flex; gap: 2rem; margin-bottom: 1.5rem; padding: 1rem; background: #1a1a2e; border-radius: 8px; }
+        .stats-bar div { text-align: center; }
+        .stats-bar .num { font-size: 1.5rem; color: #00ff88; }
+        .stats-bar .label { font-size: 0.75rem; color: #666; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .card { background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%); border: 1px solid #00ff8833; border-radius: 8px; padding: 1.2rem; cursor: pointer; transition: all 0.3s; }
+        .card:hover { border-color: #00ff88; transform: translateY(-2px); }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+        .card-title { font-size: 1rem; color: #fff; }
+        .card-badge { background: #00ff8822; color: #00ff88; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; }
+        .card-badge.elementary { background: #4facfe22; color: #4facfe; }
+        .card-badge.junior { background: #ffaa0022; color: #ffaa00; }
+        .card-badge.senior { background: #ff444422; color: #ff6666; }
+        .card-meta { color: #666; font-size: 0.8rem; margin-bottom: 0.5rem; }
+        .card-content { color: #aaa; font-size: 0.8rem; line-height: 1.4; max-height: 60px; overflow: hidden; }
+        .loading { text-align: center; padding: 3rem; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; overflow-y: auto; }
+        .modal.show { display: block; }
+        .modal-content { max-width: 700px; margin: 2rem auto; background: #1a1a2e; border: 1px solid #00ff8855; border-radius: 12px; padding: 2rem; position: relative; }
+        .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: #00ff88; font-size: 1.5rem; cursor: pointer; }
+        .modal-title { font-size: 1.3rem; color: #fff; margin-bottom: 1.5rem; }
+        .modal-section { margin-bottom: 1.2rem; }
+        .modal-section h4 { color: #00ff88; margin-bottom: 0.5rem; font-size: 0.85rem; }
+        .modal-section p { color: #ccc; line-height: 1.5; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">[<span>XTF-DAO</span>]</div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item"><i>🏠</i> 首頁</a>
+            <a href="/concepts" class="nav-item active"><i>📚</i> 概念瀏覽</a>
+            <a href="/questions" class="nav-item"><i>📝</i> 題目練習</a>
+            <a href="/mindmap" class="nav-item"><i>🧠</i> 心智圖</a>
+            <a href="/dashboard" class="nav-item"><i>📊</i> 儀表板</a>
+        </nav>
+    </div>
+    
+    <div class="main">
+        <div class="header"><div class="header-title">📚 概念瀏覽</div></div>
+        <div class="content">
+            <div class="stats-bar">
+                <div><div class="num" id="total">--</div><div class="label">總數</div></div>
+                <div><div class="num" id="elem">--</div><div class="label">國小</div></div>
+                <div><div class="num" id="junior">--</div><div class="label">國中</div></div>
+                <div><div class="num" id="senior">--</div><div class="label">高中</div></div>
+            </div>
+            <div class="filters">
+                <select id="levelFilter" onchange="load()">
+                    <option value="">全部學制</option>
+                    <option value="elementary">國小</option>
+                    <option value="junior">國中</option>
+                    <option value="senior">高中</option>
+                </select>
+                <select id="subjectFilter" onchange="load()">
+                    <option value="">全部科目</option>
+                    <option value="chinese">國文</option>
+                    <option value="english">英文</option>
+                    <option value="math">數學</option>
+                    <option value="physics">物理</option>
+                    <option value="chemistry">化學</option>
+                    <option value="biology">生物</option>
+                </select>
+            </div>
+            <div class="grid" id="grid"><div class="loading">> 載入中...</div></div>
+        </div>
+    </div>
+    
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-title" id="mTitle">概念</div>
+            <div id="mBody"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadStats() {
+            const r = await fetch('/api/system/stats');
+            const d = await r.json();
+            document.getElementById('total').textContent = d.concepts;
+            document.getElementById('elem').textContent = d.by_level?.elementary || 0;
+            document.getElementById('junior').textContent = d.by_level?.junior || 0;
+            document.getElementById('senior').textContent = d.by_level?.senior || 0;
+        }
+        
+        async function load() {
+            const level = document.getElementById('levelFilter').value;
+            const subject = document.getElementById('subjectFilter').value;
+            let url = '/api/concepts?';
+            if (level) url += 'level=' + level + '&';
+            if (subject) url += 'subject=' + subject;
+            const r = await fetch(url);
+            const data = await r.json();
+            const grid = document.getElementById('grid');
+            if (!data.length) { grid.innerHTML = '<div class="loading">> 無資料</div>'; return; }
+            const levelMap = {elementary:'國小',junior:'國中',senior:'高中'};
+            grid.innerHTML = data.map(c => `
+                <div class="card" onclick="detail(${c.id})">
+                    <div class="card-header">
+                        <div class="card-title">${c.title||'未命名'}</div>
+                        <div class="card-badge ${c.education_level||''}">${levelMap[c.education_level]||''}</div>
+                    </div>
+                    <div class="card-meta">${c.subject_code||''} | 年級 ${c.grade||'-'}</div>
+                    <div class="card-content">${(c.plain_explanation||c.content||'').substring(0,100)}...</div>
+                </div>
+            `).join('');
+        }
+        
+        async function detail(id) {
+            const r = await fetch('/api/concept/' + id);
+            const c = await r.json();
+            document.getElementById('mTitle').textContent = c.title || '概念';
+            document.getElementById('mBody').innerHTML = `
+                <div class="modal-section"><h4>> 基本資訊</h4><p>學制: ${c.education_level||'-'} | 年級: ${c.grade||'-'} | 科目: ${c.subject_code||'-'}</p></div>
+                <div class="modal-section"><h4>> 內容</h4><p>${c.content||'無'}</p></div>
+                <div class="modal-section"><h4>> 白話解釋</h4><p>${c.plain_explanation||'無'}</p></div>
+            `;
+            document.getElementById('modal').classList.add('show');
+        }
+        
+        function closeModal() { document.getElementById('modal').classList.remove('show'); }
+        document.getElementById('modal').onclick = e => { if(e.target.id==='modal') closeModal(); };
+        
+        loadStats(); load();
+    </script>
+</body>
+</html>

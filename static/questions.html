@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>題目練習 | XTF-DAO 北斗教育</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: #0a0a0f; color: #00ff88; display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 220px; background: #0f0f1a; border-right: 1px solid #00ff8833; display: flex; flex-direction: column; position: fixed; height: 100vh; }
+        .sidebar-logo { padding: 1.5rem 1rem; border-bottom: 1px solid #00ff8833; font-size: 1.1rem; }
+        .sidebar-logo span { color: #00ff88; }
+        .sidebar-nav { flex: 1; padding: 1rem 0; }
+        .nav-item { display: flex; align-items: center; padding: 0.8rem 1.2rem; color: #888; text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: #00ff8811; color: #00ff88; border-left-color: #00ff88; }
+        .nav-item i { margin-right: 0.8rem; }
+        
+        .main { flex: 1; margin-left: 220px; }
+        .header { padding: 1rem 2rem; border-bottom: 1px solid #00ff8833; }
+        .header-title { font-size: 1.3rem; color: #fff; }
+        
+        .content { padding: 2rem; max-width: 900px; }
+        .controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: center; }
+        select, .btn { background: #1a1a2e; color: #00ff88; border: 1px solid #00ff8855; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-family: inherit; }
+        .btn:hover { background: #00ff8822; }
+        
+        .stats-box { background: #1a1a2e; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; gap: 2rem; }
+        .stats-box .num { font-size: 1.5rem; color: #00ff88; }
+        .stats-box .label { color: #666; font-size: 0.75rem; }
+        
+        .question { background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%); border: 1px solid #00ff8833; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }
+        .q-header { display: flex; justify-content: space-between; margin-bottom: 0.8rem; }
+        .q-id { color: #00ff88; font-size: 0.8rem; }
+        .q-diff { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; }
+        .q-diff.easy { background: #00ff8833; color: #00ff88; }
+        .q-diff.medium { background: #ffaa0033; color: #ffaa00; }
+        .q-diff.hard { background: #ff444433; color: #ff4444; }
+        .q-content { color: #fff; margin-bottom: 1rem; line-height: 1.6; }
+        .q-options { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .option { background: #0a0a0f; border: 1px solid #333; padding: 0.6rem 1rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; color: #ccc; }
+        .option:hover { border-color: #00ff88; }
+        .option.correct { border-color: #00ff88; background: #00ff8833; color: #fff; }
+        .option.wrong { border-color: #ff4444; background: #ff444422; }
+        .q-answer { margin-top: 0.8rem; color: #666; font-size: 0.85rem; }
+        .answer-text { color: #00ff88; cursor: pointer; }
+        .loading { text-align: center; padding: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">[<span>XTF-DAO</span>]</div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item"><i>🏠</i> 首頁</a>
+            <a href="/concepts" class="nav-item"><i>📚</i> 概念瀏覽</a>
+            <a href="/questions" class="nav-item active"><i>📝</i> 題目練習</a>
+            <a href="/mindmap" class="nav-item"><i>🧠</i> 心智圖</a>
+            <a href="/dashboard" class="nav-item"><i>📊</i> 儀表板</a>
+        </nav>
+    </div>
+    
+    <div class="main">
+        <div class="header"><div class="header-title">📝 題目練習</div></div>
+        <div class="content">
+            <div class="stats-box">
+                <div><div class="num" id="totalQ">--</div><div class="label">題庫總數</div></div>
+                <div><div class="num" id="showing">--</div><div class="label">當前顯示</div></div>
+            </div>
+            <div class="controls">
+                <select id="limit">
+                    <option value="5">5 題</option>
+                    <option value="10" selected>10 題</option>
+                    <option value="20">20 題</option>
+                </select>
+                <button class="btn" onclick="load()">🔄 重新抽題</button>
+            </div>
+            <div id="list"><div class="loading">> 載入中...</div></div>
+        </div>
+    </div>
+    
+    <script>
+        let questions = [];
+        
+        async function loadStats() {
+            const r = await fetch('/api/system/stats');
+            const d = await r.json();
+            document.getElementById('totalQ').textContent = d.questions;
+        }
+        
+        async function load() {
+            const limit = document.getElementById('limit').value;
+            const r = await fetch('/api/questions?limit=' + limit);
+            questions = await r.json();
+            document.getElementById('showing').textContent = questions.length;
+            render();
+        }
+        
+        function render() {
+            const diffMap = {easy:'簡單',medium:'中等',hard:'困難'};
+            document.getElementById('list').innerHTML = questions.map((q, i) => {
+                let opts = [];
+                try { opts = q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : []; } catch(e) {}
+                return `
+                <div class="question" id="q${i}">
+                    <div class="q-header">
+                        <span class="q-id">#${q.id}</span>
+                        <span class="q-diff ${q.difficulty||'medium'}">${diffMap[q.difficulty]||'中等'}</span>
+                    </div>
+                    <div class="q-content">${q.content||q.title||'題目'}</div>
+                    ${opts.length ? `<div class="q-options">${opts.map((o,j) => `<div class="option" onclick="check(${i},${j})">${String.fromCharCode(65+j)}. ${o}</div>`).join('')}</div>` : ''}
+                    <div class="q-answer">答案: <span class="answer-text" onclick="show(${i})">點擊顯示</span></div>
+                </div>
+                `;
+            }).join('');
+        }
+        
+        function check(qi, oi) {
+            const q = questions[qi];
+            const correct = String(q.answer);
+            const opts = document.querySelectorAll(`#q${qi} .option`);
+            opts.forEach((o, j) => {
+                if (String.fromCharCode(65+j) === correct) o.classList.add('correct');
+                else if (j === oi) o.classList.add('wrong');
+            });
+        }
+        
+        function show(qi) {
+            document.querySelector(`#q${qi} .answer-text`).textContent = questions[qi].answer || '?';
+        }
+        
+        loadStats(); load();
+    </script>
+</body>
+</html>
