@@ -100,7 +100,7 @@
     </div>
     
     <script>
-        let simulation, svg, g, link, node;
+        let simulation, svg, g, link, node, zoom;
         let physicsEnabled = true;
         let currentData = { nodes: [], links: [] };
         
@@ -121,15 +121,13 @@
             
             svg.selectAll('*').remove();
             
-            // 縮放
-            const zoom = d3.zoom()
+            zoom = d3.zoom()
                 .scaleExtent([0.1, 4])
                 .on('zoom', (event) => g.attr('transform', event.transform));
             
             svg.call(zoom);
             g = svg.append('g');
             
-            // 箭頭
             svg.append('defs').append('marker')
                 .attr('id', 'arrowhead')
                 .attr('viewBox', '-0 -5 10 10')
@@ -143,10 +141,10 @@
                 .attr('fill', '#00ff8866');
             
             simulation = d3.forceSimulation()
-                .force('link', d3.forceLink().id(d => d.id).distance(80))
-                .force('charge', d3.forceManyBody().strength(-200))
+                .force('link', d3.forceLink().id(d => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
                 .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius(30));
+                .force('collision', d3.forceCollide().radius(40));
         }
         
         async function loadMindmap() {
@@ -155,10 +153,23 @@
             try {
                 const r = await fetch(`/api/mindmap/${subject}`);
                 const data = await r.json();
-                currentData = data;
-                renderGraph(data);
+                
+                // 轉換 links 格式：source_id/target_id -> source/target
+                const nodes = data.nodes || [];
+                const links = (data.links || []).map(l => ({
+                    source: l.source_id,
+                    target: l.target_id,
+                    strength: l.strength
+                }));
+                
+                // 過濾有效的 links
+                const nodeIds = new Set(nodes.map(n => n.id));
+                const validLinks = links.filter(l => nodeIds.has(l.source) && nodeIds.has(l.target));
+                
+                currentData = { nodes, links: validLinks };
+                renderGraph(currentData);
             } catch(e) {
-                // 如果 API 不存在，使用概念 API
+                console.error('載入失敗:', e);
                 const r = await fetch(`/api/concepts?subject=${subject}`);
                 const concepts = await r.json();
                 currentData = {
@@ -178,19 +189,19 @@
             document.getElementById('nodeCount').textContent = data.nodes.length;
             document.getElementById('linkCount').textContent = data.links.length;
             
-            g.selectAll('.link').remove();
-            g.selectAll('.node').remove();
+            g.selectAll('.links').remove();
+            g.selectAll('.nodes').remove();
             
-            // 連結
             link = g.append('g')
+                .attr('class', 'links')
                 .selectAll('line')
                 .data(data.links)
                 .enter().append('line')
                 .attr('class', 'link')
                 .attr('marker-end', 'url(#arrowhead)');
             
-            // 節點
             node = g.append('g')
+                .attr('class', 'nodes')
                 .selectAll('.node')
                 .data(data.nodes)
                 .enter().append('g')
@@ -203,13 +214,13 @@
                 .on('mouseout', hideTooltip);
             
             node.append('circle')
-                .attr('r', d => 8 + (d.grade || 1))
+                .attr('r', d => 6 + (d.grade || 1) * 0.5)
                 .attr('fill', d => levelColors[d.education_level] || '#00ff88');
             
             node.append('text')
                 .attr('dy', -12)
                 .attr('text-anchor', 'middle')
-                .text(d => (d.title || '').substring(0, 8));
+                .text(d => (d.title || '').substring(0, 6));
             
             simulation.nodes(data.nodes).on('tick', ticked);
             simulation.force('link').links(data.links);
@@ -263,10 +274,7 @@
         }
         
         function resetZoom() {
-            svg.transition().duration(500).call(
-                d3.zoom().transform,
-                d3.zoomIdentity
-            );
+            svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
         }
         
         function togglePhysics() {
@@ -278,7 +286,6 @@
             }
         }
         
-        // 視窗調整
         window.addEventListener('resize', () => {
             const container = document.querySelector('.graph-container');
             svg.attr('width', container.clientWidth).attr('height', container.clientHeight);
